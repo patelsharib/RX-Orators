@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RX-Orator</title>
+    <link rel="stylesheet" href="style.css"> <!-- Link to your CSS file -->
+
+    <!-- Load jsPDF library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.3.1/jspdf.umd.min.js"></script>
+
+    <!-- Load jsPDF-AutoTable plugin -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.21/jspdf.plugin.autotable.min.js"></script>
+    
+    <script src="script.js" defer></script> <!-- Link to your JavaScript file -->
+
+    <style>
+        /* Load custom fonts */
+        @import url('https://fonts.googleapis.com/css2?family=Lora:wght@700&display=swap'); /* Luxury font example */
+    </style>
+</head>
+<body>
+    <div class="container collapsed" id="mainContainer">
+        <h1 class="title">RX-Orator</h1>
+
+        <div class="input-section">
+            <label for="patient-name">Patient Name:</label>
+            <input type="text" id="patient-name" placeholder="Enter Patient Name">
+
+            <label for="age">Age:</label>
+            <input type="text" id="age" placeholder="Enter Age">
+
+            <label for="gender">Gender:</label>
+            <input type="text" id="gender" placeholder="Enter Gender (e.g., Male, Female)">
+
+            <label for="symptoms">Symptoms:</label>
+            <textarea id="symptoms" placeholder="Describe Symptoms"></textarea>
+
+            <label for="medications">Medications:</label>
+            <textarea id="medications" placeholder="List Medications (e.g., 1. Crocin - for fever (After breakfast, After dinner))"></textarea>
+        </div>
+
+        <div class="button-section">
+            <button class="voice-btn" id="start-btn">Start Voice Input</button>
+            <button class="stop-btn" id="stop-btn">Stop Recording</button>
+            <button class="upload-btn" id="upload-btn">Upload PDF</button>
+            <button class="reset-btn" id="reset-btn">Reset Fields</button>
+            <button class="adjust-btn" id="adjustBtn">Expand</button>
+        </div>
+    </div>
+</body>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const { jsPDF } = window.jspdf;
+
+            // Function to parse medication input
+            function parseMedications(inputText) {
+                const medicationList = [];
+                const lines = inputText.split('\n');
+
+                lines.forEach(line => {
+                    const parts = line.split('-'); // Split by hyphen to separate name from description
+                    const nameAndNumber = parts[0].trim().split('.'); // Split by dot to extract number and name
+                    const name = nameAndNumber.slice(1).join('.').trim(); // Extract medication name without the number
+                    const timingInfo = parts[1] ? parts[1].match(/\(([^)]+)\)/) : null; // Check if there’s timing info
+                    const timing = timingInfo ? timingInfo[1].split(',').map(time => time.trim()) : []; // Extract timing if present
+                    medicationList.push({ name, timing }); // Push to list
+                });
+                return medicationList;
+            }
+
+            document.getElementById('upload-btn').addEventListener('click', () => {
+                const patientName = document.getElementById('patient-name').value.trim();
+                const symptoms = document.getElementById('symptoms').value.trim();
+                const medicationsText = document.getElementById('medications').value.trim();
+
+                if (!patientName || !medicationsText) {
+                    alert('Please enter the patient\'s name and list medications.');
+                    return;
+                }
+
+                const medicationList = parseMedications(medicationsText);
+
+                const doc = new jsPDF();
+                doc.setFont('Helvetica', 'bold'); // Switch to Helvetica (a standard jsPDF font)
+                doc.setFontSize(11); // Set font size
+
+                // Load and add the logo image
+                const img = new Image();
+                img.src = 'RX-Orator.png'; // Ensure this is the correct path to the image
+                img.onload = function() {
+                    doc.addImage(img, 'PNG', 10, 10, 80, 30); // Logo placement
+
+                    // Add the business name and info aligned to the right
+                    doc.text('Clinic Name', 160, 25, { align: 'right' });
+                    doc.text('Agripada, Mumbai, Maharashtra', 160, 30, { align: 'right' });
+                    doc.text('(+91) 909090909', 160, 35, { align: 'right' });
+                    doc.text('email@example.com', 160, 40, { align: 'right' });
+
+                    doc.text("Patient Report", 105, 65, { align: 'center' });
+
+                    // Add patient data
+                    doc.text(`Patient Name: ${patientName}`, 20, 80);
+                    doc.text(`Symptoms: ${symptoms}`, 20, 85);
+
+                    // Medications in tabular format
+                    const tableData = medicationList.map((med, index) => [index + 1, med.name, med.timing.join(', ')]);
+                    doc.autoTable({
+                        startY: 120,
+                        head: [['Sr', 'Medication', 'Duration']],
+                        body: tableData,
+                    });
+
+                    // Add doctor's name and address
+                    doc.text('Doctor\'s Name: Dr. Shara', 20, 240);
+                    doc.text('Clinic Address: Agripada, Mumbai, Maharashtra', 20, 245);
+
+                    // Add doctor's signature image
+                    const signatureImg = new Image();
+                    signatureImg.src = 'docsign.png'; // Ensure this is the correct path to the image
+                    signatureImg.onload = function() {
+                        doc.addImage(signatureImg, 'PNG', 20, 250, 50, 20); // Adjust size and position as needed
+
+                        // Save the PDF with the patient name as filename
+                        doc.save(`${patientName}.pdf`);
+                    };
+                };
+            });
+
+            // Reset fields
+            document.getElementById('reset-btn')?.addEventListener('click', () => {
+                document.getElementById('patient-name').value = '';
+                document.getElementById('symptoms').value = '';
+                document.getElementById('medications').value = '';
+            });
+
+            // Expand/Collapse functionality
+            document.getElementById('adjustBtn')?.addEventListener('click', () => {
+                const container = document.getElementById('mainContainer');
+                container.classList.toggle('collapsed');
+                const isCollapsed = container.classList.contains('collapsed');
+                document.getElementById('adjustBtn').innerText = isCollapsed ? "Expand" : "Collapse";
+            });
+        });
+    </script>
+</body>
+</html>
